@@ -1,4 +1,4 @@
-package dto;
+package com.scfss.dto;
 
 import java.io.Serializable;
 import java.util.UUID;
