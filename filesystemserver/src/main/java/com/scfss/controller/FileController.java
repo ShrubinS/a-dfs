@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.util.stream.Collectors;
 
 import com.scfss.dto.ConnectResponse;
+import com.scfss.dto.FileListingResponse;
+import com.scfss.dto.FileUploadResponse;
 import com.scfss.service.ConnectService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
@@ -35,15 +37,17 @@ public class FileController {
         return connectService.connect();
     }
 
-    @GetMapping("/")
-    public String listUploadedFiles(Model model) throws IOException {
+    @GetMapping("/list")
+    public FileListingResponse listUploadedFiles() throws IOException {
 
-        model.addAttribute("files", storageService.loadAll().map(
-                path -> MvcUriComponentsBuilder.fromMethodName(FileController.class,
-                        "serveFile", path.getFileName().toString()).build().toString())
-                .collect(Collectors.toList()));
+//        model.addAttribute("files", storageService.loadAll().map(
+//                path -> MvcUriComponentsBuilder.fromMethodName(FileController.class,
+//                        "serveFile", path.getFileName().toString()).build().toString())
+//                .collect(Collectors.toList()));
 
-        return "uploadForm";
+        FileListingResponse fileListingResponse = new FileListingResponse();
+        storageService.loadAll().forEach(path -> fileListingResponse.getFiles().add(path.getFileName().toString()));
+        return fileListingResponse;
     }
 
     @GetMapping("/files/{filename:.+}")
@@ -55,20 +59,29 @@ public class FileController {
                 "attachment; filename=\"" + file.getFilename() + "\"").body(file);
     }
 
-    @PostMapping("/")
-    public String handleFileUpload(@RequestParam("file") MultipartFile file,
-                                   RedirectAttributes redirectAttributes) {
+    @PostMapping("/upload")
+    public FileUploadResponse handleFileUpload(@RequestParam("file") MultipartFile file) {
 
-        storageService.store(file);
-        redirectAttributes.addFlashAttribute("message",
-                "You successfully uploaded " + file.getOriginalFilename() + "!");
+        String message = "file " + file.getOriginalFilename() + " uploaded successfully";
+        try {
+            storageService.store(file);
+        } catch (Exception e) {
+            message = e.getMessage();
+        }
+        FileUploadResponse fileUploadResponse = new FileUploadResponse();
+        fileUploadResponse.setMessage(message);
 
-        return "redirect:/";
+        return fileUploadResponse;
     }
 
     @ExceptionHandler(StorageFileNotFoundException.class)
     public ResponseEntity<?> handleStorageFileNotFound(StorageFileNotFoundException exc) {
         return ResponseEntity.notFound().build();
+    }
+
+    @ExceptionHandler(IOException.class)
+    public ResponseEntity<?> handleIOException(IOException ioe) {
+        return ResponseEntity.unprocessableEntity().build();
     }
 
 }
