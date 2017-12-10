@@ -1,6 +1,9 @@
 package com.scfss.controller;
 
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import com.scfss.dto.ConnectResponse;
@@ -11,9 +14,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
-import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.ui.Model;
 import org.springframework.web.servlet.mvc.method.annotation.MvcUriComponentsBuilder;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import com.scfss.storage.StorageFileNotFoundException;
@@ -77,11 +80,6 @@ public class FileController {
     @ExceptionHandler(StorageFileNotFoundException.class)
     public ResponseEntity<?> handleStorageFileNotFound(StorageFileNotFoundException exc) {
         return ResponseEntity.notFound().build();
-    }
-
-    @ExceptionHandler(IOException.class)
-    public ResponseEntity<?> handleIOException(IOException ioe) {
-        return ResponseEntity.unprocessableEntity().build();
     }
 
 }
