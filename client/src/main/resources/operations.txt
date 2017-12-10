@@ -1,0 +1,7 @@
+Available operations:
+    r       : read file. If file does not exist, throw error
+    w       : overwrite file if exists, or create new file
+    a       : modify existing file, file must already exist
+    ls      : show files currently in directory
+    cd      : move into directory
+    help    : show list of available operations
