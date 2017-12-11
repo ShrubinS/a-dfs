@@ -1,3 +1,4 @@
 filesystemserver/target
 lockserver/target
 nameserver/target
+client/target

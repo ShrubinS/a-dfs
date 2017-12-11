@@ -5,7 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class FileListingResponse implements Serializable {
-    List<String> files;
+    private List<String> files;
 
     public FileListingResponse() {
         files = new ArrayList<>();

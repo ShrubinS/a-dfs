@@ -26,7 +26,6 @@ public class CommandLiner implements CommandLineRunner {
         this.opsFile = opsFile;
     }
 
-    @Override
     /*
         args[0] : file name
         args[1] : file operations
@@ -34,22 +33,24 @@ public class CommandLiner implements CommandLineRunner {
         Available operations:
             r   : read file. If file does not exist, throw error (no lock required)
             w   : overwrite file if exists, or create new file
-            a   : modify existing file, if file does not exist, throw error
+            a   : append to existing file, if file does not exist, throw error
             ls  : show files currently in directory (no lock required)
             cd  : move into directory
             help: show list of available ops
             exit/quit: quit
      */
+    @Override
     public void run(String... args) throws Exception {
         if (args == null) {
             throw new UnsupportedOperationException("file argument or operation argument is missing");
         }
 
-        System.out.println("Enter operation. List of available operations are .. ");
+        System.out.println("Enter operation. List of available operations are... ");
         /*
             TODO: add file writing
          */
 
+        String workingDir = environment.getProperty("client.wdir");
 
         try(Scanner in = new Scanner(System.in)) {
 
@@ -61,7 +62,23 @@ public class CommandLiner implements CommandLineRunner {
                 String fileName = commands[1];
 
                 switch (op) {
-                    case "r": fileService.readFile(fileName);
+                    case "r":
+                        fileService.readFile(fileName);
+                        break;
+                    case "w":
+                        String write = commands[2];
+                        fileService.writeFile(fileName, write);
+                        break;
+                    case "a":
+                        String append = commands[2];
+                        fileService.appendToFile(fileName, append);
+                        break;
+                    case "ls":
+                        fileService.listFiles(workingDir);
+                        break;
+                    case "cd":
+                        workingDir = fileService.changeDir(fileName);
+                        break;
                 }
             }
         }

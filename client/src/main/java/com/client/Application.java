@@ -35,17 +35,8 @@ public class Application {
 
     @Bean
     public File operations() throws IOException{
-        Resource resource = new ClassPathResource("storedProcedures.sql");
+        Resource resource = new ClassPathResource("operations.txt");
         return new File(resource.getURI());
     }
 
-    @Bean
-    public void listOperations (File file) throws Exception {
-        FileInputStream fis = new FileInputStream(file);
-        int oneByte;
-        while ((oneByte = fis.read()) != -1) {
-            System.out.write(oneByte);
-        }
-        System.out.flush();
-    }
 }

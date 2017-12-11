@@ -1,8 +1,13 @@
-package com.ns.dto;
+package com.client.dto;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import java.io.Serializable;
 
-public class NameResponse implements Serializable {
+
+@JsonIgnoreProperties(ignoreUnknown = true)
+public class FileServerInfo {
+
     private String fileSystemServerInfo;
     private String filePath;
 
@@ -21,4 +26,5 @@ public class NameResponse implements Serializable {
     public void setFilePath(String filePath) {
         this.filePath = filePath;
     }
+
 }

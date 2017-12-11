@@ -10,6 +10,7 @@ import com.scfss.dto.ConnectResponse;
 import com.scfss.dto.FileListingResponse;
 import com.scfss.dto.FileUploadResponse;
 import com.scfss.service.ConnectService;
+import com.scfss.service.NotifyLockServerService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
@@ -28,17 +29,19 @@ public class FileController {
 
     private final StorageService storageService;
     private final ConnectService connectService;
+    private final NotifyLockServerService notifyLockServerService;
 
     @Autowired
-    public FileController(ConnectService connectService, StorageService storageService) {
+    public FileController(ConnectService connectService, StorageService storageService, NotifyLockServerService notifyLockServerService) {
         this.connectService = connectService;
         this.storageService = storageService;
+        this.notifyLockServerService = notifyLockServerService;
     }
 
-    @RequestMapping(value = "/connect", method = RequestMethod.GET)
-    public ConnectResponse connect() {
-        return connectService.connect();
-    }
+//    @RequestMapping(value = "/connect", method = RequestMethod.GET)
+//    public ConnectResponse connect() {
+//        return connectService.connect();
+//    }
 
     @GetMapping("/list")
     public FileListingResponse listUploadedFiles() throws IOException {
@@ -55,11 +58,14 @@ public class FileController {
 
     @GetMapping("/files/{filename:.+}")
     @ResponseBody
-    public ResponseEntity<Resource> serveFile(@PathVariable String filename) {
+    public ResponseEntity<Resource> serveFile(@PathVariable String filename) throws IOException{
 
         Resource file = storageService.loadAsResource(filename);
+        HttpHeaders httpHeaders = new HttpHeaders();
+        httpHeaders.setLastModified(file.lastModified());
+
         return ResponseEntity.ok().header(HttpHeaders.CONTENT_DISPOSITION,
-                "attachment; filename=\"" + file.getFilename() + "\"").body(file);
+                "attachment; filename=\"" + file.getFilename() + "\"").headers(httpHeaders).body(file);
     }
 
     @PostMapping("/upload")
@@ -68,6 +74,7 @@ public class FileController {
         String message = "file " + file.getOriginalFilename() + " uploaded successfully";
         try {
             storageService.store(file);
+            notifyLockServerService.notifyFileCreated(file.getOriginalFilename());
         } catch (Exception e) {
             message = e.getMessage();
         }
