@@ -1,5 +1,6 @@
 package service;
 
+import exception.LockServerFileExistsException;
 import model.FileLockMap;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -18,9 +19,9 @@ public class FileService {
     }
 
     public String addFile(String fileName) {
-        List<FileLockMap> fileLockMapList = fileLockMapRepository.findFileLockMapByFileName(fileName)
-        if (fileLockMapList != null && !fileLockMapList.isEmpty()) {
-            throw new UnsupportedOperationException("fileName Already exists");
+        FileLockMap fileLockMapCheck = fileLockMapRepository.findFileLockMapByFileName(fileName);
+        if (fileLockMapCheck != null) {
+            throw new LockServerFileExistsException("file already exists");
         }
         FileLockMap fileLockMap = new FileLockMap();
         fileLockMap.setFileName(fileName);

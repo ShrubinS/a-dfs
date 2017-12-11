@@ -8,5 +8,6 @@ import java.util.List;
 
 public interface FileLockMapRepository extends JpaRepository<FileLockMap, Long> {
 
-    List<FileLockMap> findFileLockMapByFileName(String fileName);
+    FileLockMap findFileLockMapByFileName(String fileName);
+
 }

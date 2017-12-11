@@ -1,9 +1,7 @@
 package model;
 
-import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
+import javax.persistence.*;
+import java.sql.Timestamp;
 
 @Entity
 public class FileLockMap {
@@ -12,6 +10,9 @@ public class FileLockMap {
     private String fileName;
 
     private boolean locked;
+
+    @Temporal(TemporalType.TIMESTAMP)
+    private Timestamp timestamp;
 
 
     public String getFileName() {
@@ -28,5 +29,13 @@ public class FileLockMap {
 
     public void setLocked(boolean locked) {
         this.locked = locked;
+    }
+
+    public Timestamp getTimestamp() {
+        return timestamp;
+    }
+
+    public void setTimestamp(Timestamp timestamp) {
+        this.timestamp = timestamp;
     }
 }
