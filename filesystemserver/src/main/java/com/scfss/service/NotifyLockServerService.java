@@ -19,7 +19,7 @@ public class NotifyLockServerService {
 
     public void notifyFileCreated(String fileName) {
         String lockserverInfo = environment.getProperty("lockserver.address") + ":" + environment.getProperty("lockserver.port");
-        restTemplate.put(lockserverInfo, fileName);
+        restTemplate.postForEntity(lockserverInfo, fileName, String.class);
     }
 
 }
