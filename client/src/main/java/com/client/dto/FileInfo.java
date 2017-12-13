@@ -2,7 +2,7 @@ package com.client.dto;
 
 public class FileInfo {
     private String localFileName;
-    private String lastModified;
+    private Long lastModified;
 
     public String getLocalFileName() {
         return localFileName;
@@ -12,11 +12,11 @@ public class FileInfo {
         this.localFileName = localFileName;
     }
 
-    public String getLastModified() {
+    public Long getLastModified() {
         return lastModified;
     }
 
-    public void setLastModified(String lastModified) {
+    public void setLastModified(Long lastModified) {
         this.lastModified = lastModified;
     }
 }

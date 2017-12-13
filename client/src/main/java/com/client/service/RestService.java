@@ -21,6 +21,7 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 
 import java.io.IOException;
+import java.nio.FloatBuffer;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.List;
@@ -32,30 +33,30 @@ public class RestService {
 
     private final RestTemplate restTemplate;
     private final Environment environment;
+    private final CacheService cacheService;
 
     @Autowired
-    public RestService(RestTemplate restTemplate, Environment environment) {
+    public RestService(RestTemplate restTemplate, Environment environment, CacheService cacheService) {
         this.restTemplate = restTemplate;
         this.environment = environment;
+        this.cacheService = cacheService;
     }
 
-    public FileServerInfo getFileServer(String fileName) {
-        String nameServerInfo = environment.getProperty("nameserver.address") + ":" + environment.getProperty("nameserver.port");
+    public FileServerInfo getFileServer(String fileName, String nameServerInfo) {
         FileServerInfo fileServerInfo = restTemplate.getForObject(nameServerInfo, FileServerInfo.class);
         log.info(fileServerInfo.toString());
         return fileServerInfo;
     }
 
-    public LockInfo getLock(String fileName) {
-        String lockserverInfo = environment.getProperty("lockserver.address") + ":" + environment.getProperty("lockserver.port");
+    public LockInfo getLock(String fileName, String lockserverInfo) {
         LockInfo lockInfo = restTemplate.getForObject(lockserverInfo, LockInfo.class);
         log.info(lockInfo.toString());
         return lockInfo;
     }
 
-    public FileUploadResponse postFile(String localFileName, String serverInfo) {
+    public FileUploadResponse postFile(String localFileName, String fileServerInfo) {
         MultiValueMap<String, Object> parameters = new LinkedMultiValueMap<>();
-        String localTempDir = environment.getProperty("localtempdir");
+        String localTempDir = environment.getProperty("config.localtempdir");
         parameters.add("file", new FileSystemResource(localTempDir + localFileName));
 
         HttpHeaders headers = new HttpHeaders();
@@ -63,28 +64,31 @@ public class RestService {
         headers.set("Accept", "text/plain");
 
         FileUploadResponse result = restTemplate.postForObject(
-                serverInfo,
+                fileServerInfo,
                 new HttpEntity<MultiValueMap<String, Object>>(parameters, headers),
                 FileUploadResponse.class);
         log.info(result.toString());
         return result;
     }
 
-    public FileInfo getFile(String fileName, String serverInfo) throws IOException{
-        String url = serverInfo + fileName;
-        String localTempDir = environment.getProperty("localtempdir");
-
-
+    public FileInfo getFile(String fileName, String fileServerInfo) throws IOException{
+        String url = fileServerInfo + fileName;
         ResponseEntity<byte[]> responseEntity = restTemplate.getForEntity(url, byte[].class);
 
         byte[] fileBytes = responseEntity.getBody();
-        Files.write(Paths.get(localTempDir + fileName), fileBytes);
+
+        cacheService.writeFile(fileName, fileBytes);
 
         List<String> lastModified = responseEntity.getHeaders().get("Last-Modified");
         FileInfo fileInfo = new FileInfo();
-        fileInfo.setLastModified(lastModified.get(0));
+        fileInfo.setLastModified(Long.parseLong(lastModified.get(0)));
         fileInfo.setLocalFileName(fileName);
 
         return fileInfo;
+    }
+
+    public String getFileHash(String fileName, String fileServerInfo) {
+        String url = fileServerInfo + fileName;
+        ResponseEntity<String> stringResponseEntity = restTemplate.getForEntity()
     }
 }

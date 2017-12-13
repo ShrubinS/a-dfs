@@ -1,15 +1,10 @@
 package com.scfss.controller;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.function.Function;
-import java.util.function.Supplier;
-import java.util.stream.Collectors;
 
-import com.scfss.dto.ConnectResponse;
 import com.scfss.dto.FileListingResponse;
 import com.scfss.dto.FileUploadResponse;
-import com.scfss.service.ConnectService;
+import com.scfss.service.FileHashService;
 import com.scfss.service.NotifyLockServerService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
@@ -17,9 +12,6 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.ui.Model;
-import org.springframework.web.servlet.mvc.method.annotation.MvcUriComponentsBuilder;
-import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import com.scfss.storage.StorageFileNotFoundException;
 import com.scfss.storage.StorageService;
 
@@ -28,12 +20,12 @@ import com.scfss.storage.StorageService;
 public class FileController {
 
     private final StorageService storageService;
-    private final ConnectService connectService;
+    private final FileHashService fileHashService;
     private final NotifyLockServerService notifyLockServerService;
 
     @Autowired
-    public FileController(ConnectService connectService, StorageService storageService, NotifyLockServerService notifyLockServerService) {
-        this.connectService = connectService;
+    public FileController(FileHashService fileHashService, StorageService storageService, NotifyLockServerService notifyLockServerService) {
+        this.fileHashService = fileHashService;
         this.storageService = storageService;
         this.notifyLockServerService = notifyLockServerService;
     }
@@ -56,6 +48,18 @@ public class FileController {
         return fileListingResponse;
     }
 
+    @GetMapping("/files-hash/{filename}")
+    public ResponseEntity<String> getHash(@PathVariable String filename) throws IOException{
+        Resource file = storageService.loadAsResource(filename);
+        String fileHash = fileHashService.getMD5Hash(filename);
+        HttpHeaders httpHeaders = new HttpHeaders();
+        httpHeaders.set("File-Hash", fileHash);
+        httpHeaders.setLastModified(file.lastModified());
+
+        return ResponseEntity.ok().header(HttpHeaders.CONTENT_DISPOSITION,
+                "details; filename=\"" + filename + "\"").headers(httpHeaders).body("");
+    }
+
     @GetMapping("/files/{filename:.+}")
     @ResponseBody
     public ResponseEntity<Resource> serveFile(@PathVariable String filename) throws IOException{
@@ -74,6 +78,7 @@ public class FileController {
         String message = "file " + file.getOriginalFilename() + " uploaded successfully";
         try {
             storageService.store(file);
+            fileHashService.createHashForDB(file);
             notifyLockServerService.notifyFileCreated(file.getOriginalFilename());
         } catch (Exception e) {
             message = e.getMessage();

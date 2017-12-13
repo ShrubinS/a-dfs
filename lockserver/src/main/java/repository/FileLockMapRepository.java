@@ -6,7 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
 
-public interface FileLockMapRepository extends JpaRepository<FileLockMap, Long> {
+public interface FileLockMapRepository extends JpaRepository<FileLockMap, String> {
 
     FileLockMap findFileLockMapByFileName(String fileName);
 
