@@ -3,17 +3,24 @@ package com.client.service;
 import com.client.dto.FileInfo;
 import com.client.dto.FileServerInfo;
 import com.client.dto.FileUploadResponse;
+import com.client.dto.LockInfo;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.env.Environment;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import javax.swing.plaf.InternalFrameUI;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.rmi.ServerError;
 import java.rmi.UnexpectedException;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Future;
+import java.util.function.Supplier;
 import java.util.logging.Logger;
 
 @Service
@@ -26,6 +33,9 @@ public class FileService {
     private final String NAMESERVER;
     private final String LOCKSERVER;
 
+    @Value("${lock.max_tries}")
+    private String MAX_TRIES;
+
     private static final org.slf4j.Logger log = LoggerFactory.getLogger(FileService.class);
 
     @Autowired
@@ -34,8 +44,8 @@ public class FileService {
         this.cacheService = cacheService;
         this.environment = environment;
 
-        this.NAMESERVER = this.environment.getProperty("nameserver.address") + ":" + environment.getProperty("nameserver.port");
-        this.LOCKSERVER = this.environment.getProperty("lockserver.address") + ":" + environment.getProperty("lockserver.port");
+        this.NAMESERVER = this.environment.getProperty("nameserver.address") + ":" + environment.getProperty("nameserver.port") + "/";
+        this.LOCKSERVER = this.environment.getProperty("lockserver.address") + ":" + environment.getProperty("lockserver.port") + "/";
     }
 
     public File readFile(String fileName) throws Exception{
@@ -43,7 +53,7 @@ public class FileService {
         if (serverInfo == null) {
             throw new Exception("file server not found");
         }
-        File file = cacheService.getFile(fileName, serverInfo.getFileSystemServerInfo());
+        File file = cacheService.getFile(serverInfo.getFilePath(), serverInfo.getFileSystemServerInfo());
 
         /*
             Cache miss
@@ -55,7 +65,7 @@ public class FileService {
             /*
                 File should now be present in cache
             */
-            file = cacheService.getFile(fileName, serverInfo.getFileSystemServerInfo());
+            file = cacheService.getFile(serverInfo.getFilePath(), serverInfo.getFileSystemServerInfo());
 
             if (file == null) {
                 throw new Exception("error in caching");
@@ -65,13 +75,15 @@ public class FileService {
     }
 
     public void writeFile(String fileName, String toWrite, String mode) throws Exception{
-        cacheService.writeFile(fileName, toWrite.getBytes(), mode);
+
+        FileServerInfo serverInfo = restService.getFileServer(fileName, NAMESERVER);
+        cacheService.writeFile(serverInfo.getFilePath(), toWrite.getBytes(), mode);
         FileServerInfo fileServerInfo = restService.getFileServer(fileName, NAMESERVER);
         if (fileServerInfo == null) {
-            throw new Exception("file server not found");
+            throw new IOException("file server not found");
         }
-        FileUploadResponse fileUploadResponse = restService.postFile(fileName, fileServerInfo.getFileSystemServerInfo());
-        log.info(fileUploadResponse.getMessage());
+        writeFileAsync(serverInfo.getFilePath(), fileServerInfo.getFileSystemServerInfo());
+
     }
 
     public void appendToFile(String fileName, String toWrite) throws Exception{
@@ -79,12 +91,34 @@ public class FileService {
         this.writeFile(fileName, toWrite, "a");
     }
 
-    public void listFiles(String clientWD) {
-        
+    public void listFiles(String clientWorkingDir) {
+
     }
 
     public String changeDir(String toDir) {
+        return toDir;
+    }
 
-        return "";
+    private void writeFileAsync(String fileName, String fileServerInfo) {
+        Future future = CompletableFuture
+                .runAsync(() -> {
+                    int i = 0;
+                    while (restService.getLock(fileName, LOCKSERVER) == null) {
+                        try {
+                            Thread.sleep(500);
+                            System.out.println("Waiting to acquire lock");
+                            i++;
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                        if (i == Integer.parseInt(MAX_TRIES)) {
+                            throw new RuntimeException("Lock could not be obtained");
+                        }
+                    }
+                    FileUploadResponse fileUploadResponse = restService.postFile(fileName, fileServerInfo + "upload");
+                    restService.deleteLock(fileName, LOCKSERVER);
+                    log.info("write operation completed for file " + fileName);
+                })
+                .handle((result, ex) -> "Error handling: " + ex.getMessage());
     }
 }

@@ -1,4 +1,4 @@
-package dto.request;
+package com.fs.dto.request;
 
 import java.util.List;
 

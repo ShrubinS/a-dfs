@@ -1,4 +1,4 @@
-package model;
+package com.fs.model;
 
 import javax.persistence.*;
 import java.sql.Timestamp;
@@ -11,7 +11,6 @@ public class FileLockMap {
 
     private boolean locked;
 
-    @Temporal(TemporalType.TIMESTAMP)
     private Timestamp timestamp;
 
 

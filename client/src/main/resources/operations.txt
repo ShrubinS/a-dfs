@@ -3,5 +3,5 @@ Available operations:
     w       : overwrite file if exists, or create new file
     a       : modify existing file, file must already exist
     ls      : show files currently in directory
-    cd      : move into directory
+    cd      : move into directory, must provide absolute path
     help    : show list of available operations

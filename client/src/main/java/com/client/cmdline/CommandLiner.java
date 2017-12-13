@@ -10,6 +10,8 @@ import org.springframework.web.client.RestTemplate;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.Scanner;
 
 @Component
@@ -56,22 +58,33 @@ public class CommandLiner implements CommandLineRunner {
 
             String command;
 
+            System.out.print("\n@" + workingDir + " ");
             while (!(command = in.nextLine()).equals("exit")) {
-                String[] commands =  command.split(" ");
+                String[] commands =  command.trim().split(" ");
                 String op = commands[0];
                 String fileName = commands[1];
+                String inputText = "";
+                try {
+                     inputText = command.substring(command.indexOf("\"") + 1, command.lastIndexOf("\""));
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+
+                String filePath = workingDir + fileName;
 
                 switch (op) {
                     case "r":
-                        File file = fileService.readFile(fileName);
+                        File file = fileService.readFile(filePath);
+                        byte[] text = Files.readAllBytes(Paths.get(file.getAbsolutePath()));
+                        System.out.write(text);
                         break;
                     case "w":
-                        String write = commands[2];
-                        fileService.writeFile(fileName, write);
+                        String write = inputText;
+                        fileService.writeFile(filePath, write, "w");
                         break;
                     case "a":
-                        String append = commands[2];
-                        fileService.appendToFile(fileName, append);
+                        String append = inputText;
+                        fileService.appendToFile(filePath, append);
                         break;
                     case "ls":
                         fileService.listFiles(workingDir);
@@ -80,6 +93,7 @@ public class CommandLiner implements CommandLineRunner {
                         workingDir = fileService.changeDir(fileName);
                         break;
                 }
+                System.out.print("\n@" + workingDir + " ");
             }
         }
 

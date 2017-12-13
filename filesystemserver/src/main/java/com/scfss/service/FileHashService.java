@@ -4,6 +4,7 @@ import com.scfss.dto.ConnectResponse;
 import com.scfss.model.FileHash;
 import com.scfss.repository.FileHashRepository;
 import com.scfss.storage.StorageFileNotFoundException;
+import com.scfss.storage.StorageProperties;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
@@ -12,6 +13,8 @@ import org.springframework.web.multipart.MultipartFile;
 import javax.transaction.Transactional;
 import java.io.File;
 import java.math.BigInteger;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.security.MessageDigest;
 import java.util.UUID;
 
@@ -19,10 +22,12 @@ import java.util.UUID;
 public class FileHashService {
 
     private final FileHashRepository fileHashRepository;
+    private final Path rootLocation;
 
     @Autowired
-    public FileHashService(FileHashRepository fileHashRepository) {
+    public FileHashService(FileHashRepository fileHashRepository, StorageProperties properties) {
         this.fileHashRepository = fileHashRepository;
+        this.rootLocation = Paths.get(properties.getLocation());
     }
 
     @Transactional

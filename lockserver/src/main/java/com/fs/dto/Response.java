@@ -1,4 +1,4 @@
-package dto;
+package com.fs.dto;
 
 import java.io.Serializable;
 

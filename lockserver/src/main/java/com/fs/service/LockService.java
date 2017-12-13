@@ -1,7 +1,7 @@
-package service;
+package com.fs.service;
 
-import dto.Response;
-import dto.request.FileIdRequest;
+import com.fs.dto.Response;
+import com.fs.dto.request.FileIdRequest;
 
 import javax.transaction.Transactional;
 

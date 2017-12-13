@@ -1,4 +1,4 @@
-package exception;
+package com.fs.exception;
 
 public class LockServerFileExistsException extends RuntimeException {
     public LockServerFileExistsException(String message) {

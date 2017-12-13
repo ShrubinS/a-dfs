@@ -12,6 +12,8 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigInteger;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
@@ -46,9 +48,10 @@ public class CacheService {
         String clientHash = new BigInteger(1, digest).toString(16);
         Long clientModified = file.lastModified();
 
-        ResponseEntity<String> responseEntity = restTemplate.getForEntity(serverInfo, String.class);
+        String url = serverInfo + "files-hash?filename=" + URLEncoder.encode(filename, StandardCharsets.UTF_8.toString());
+        ResponseEntity<String> responseEntity = restTemplate.getForEntity(url, String.class);
         String serverHash = responseEntity.getHeaders().get("File-Hash").get(0);
-        Long serverModified = Long.parseLong(responseEntity.getHeaders().get("Last-Modified").get(0));
+        Long serverModified = Long.parseLong(responseEntity.getHeaders().get("Modified-Last").get(0));
 
         if (serverHash.equals(clientHash)) {
             return file;

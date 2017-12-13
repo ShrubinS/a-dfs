@@ -1,4 +1,4 @@
-package exception;
+package com.fs.exception;
 
 public class LockServerConflictException extends RuntimeException {
     public LockServerConflictException(String message) {

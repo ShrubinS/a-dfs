@@ -1,11 +1,15 @@
 package com.scfss.controller;
 
 import java.io.IOException;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 
 import com.scfss.dto.FileListingResponse;
 import com.scfss.dto.FileUploadResponse;
 import com.scfss.service.FileHashService;
 import com.scfss.service.NotifyLockServerService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
@@ -18,6 +22,8 @@ import com.scfss.storage.StorageService;
 
 @RestController
 public class FileController {
+
+    private static final Logger log = LoggerFactory.getLogger(FileController.class);
 
     private final StorageService storageService;
     private final FileHashService fileHashService;
@@ -48,16 +54,19 @@ public class FileController {
         return fileListingResponse;
     }
 
-    @GetMapping("/files-hash/{filename}")
-    public ResponseEntity<String> getHash(@PathVariable String filename) throws IOException{
-        Resource file = storageService.loadAsResource(filename);
-        String fileHash = fileHashService.getMD5Hash(filename);
+    @GetMapping("/files-hash")
+    public ResponseEntity<String> getHash(@RequestParam("filename") String filename) throws IOException{
+        String filePath = URLDecoder.decode(filename, StandardCharsets.UTF_8.toString());
+        Resource file = storageService.loadAsResource(filePath);
+        String fileHash = fileHashService.getMD5Hash(filePath);
         HttpHeaders httpHeaders = new HttpHeaders();
         httpHeaders.set("File-Hash", fileHash);
-        httpHeaders.setLastModified(file.lastModified());
+        httpHeaders.set("Modified-Last", String.valueOf(file.lastModified()));
+
+        log.info("getting hash");
 
         return ResponseEntity.ok().header(HttpHeaders.CONTENT_DISPOSITION,
-                "details; filename=\"" + filename + "\"").headers(httpHeaders).body("");
+                "details; filename=\"" + filePath + "\"").headers(httpHeaders).body("");
     }
 
     @GetMapping("/files/{filename:.+}")
@@ -67,6 +76,8 @@ public class FileController {
         Resource file = storageService.loadAsResource(filename);
         HttpHeaders httpHeaders = new HttpHeaders();
         httpHeaders.setLastModified(file.lastModified());
+
+        log.info("serving file for" + filename);
 
         return ResponseEntity.ok().header(HttpHeaders.CONTENT_DISPOSITION,
                 "attachment; filename=\"" + file.getFilename() + "\"").headers(httpHeaders).body(file);
@@ -85,6 +96,8 @@ public class FileController {
         }
         FileUploadResponse fileUploadResponse = new FileUploadResponse();
         fileUploadResponse.setMessage(message);
+
+        log.info("uploading file " + file.getOriginalFilename());
 
         return fileUploadResponse;
     }

@@ -11,15 +11,19 @@ public class NotifyLockServerService {
     private final RestTemplate restTemplate;
     private final Environment environment;
 
+    private String LOCKSERVER;
+
     @Autowired
     public NotifyLockServerService(RestTemplate restTemplate, Environment environment) {
         this.restTemplate = restTemplate;
         this.environment = environment;
+
+        this.LOCKSERVER = environment.getProperty("lockserver.address") + ":" + environment.getProperty("lockserver.port") + "/";
     }
 
     public void notifyFileCreated(String fileName) {
-        String lockserverInfo = environment.getProperty("lockserver.address") + ":" + environment.getProperty("lockserver.port");
-        restTemplate.postForEntity(lockserverInfo, fileName, String.class);
+        String url = LOCKSERVER + "create-file";
+        restTemplate.postForEntity(url, fileName, String.class);
     }
 
 }

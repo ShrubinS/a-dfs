@@ -1,4 +1,4 @@
-package util;
+package com.fs.util;
 
 public class TimeStampUtil {
 

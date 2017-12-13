@@ -1,16 +1,15 @@
-package service.impl;
+package com.fs.service.impl;
 
-import dto.Response;
-import dto.request.FileIdRequest;
-import exception.LockServerConflictException;
-import model.FileLockMap;
+import com.fs.dto.Response;
+import com.fs.dto.request.FileIdRequest;
+import com.fs.exception.LockServerConflictException;
+import com.fs.model.FileLockMap;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import repository.FileLockMapRepository;
-import service.LockService;
-import service.RedisService;
-import util.TimeStampUtil;
+import com.fs.repository.FileLockMapRepository;
+import com.fs.service.LockService;
+import com.fs.util.TimeStampUtil;
 
 import javax.transaction.Transactional;
 import java.sql.Timestamp;
@@ -45,15 +44,22 @@ public class LockServiceImpl implements LockService {
         List<FileLockMap> fileLockMap = new ArrayList<>();
         fileIdRequest.getFileIds().forEach(file -> {
             FileLockMap flm = fileLockMapRepository.findFileLockMapByFileName(file);
-            if (flm.isLocked()) {
-                Timestamp now = new Timestamp(new Date().getTime());
-                if (TimeStampUtil.compareTwoTimeStamps(now, flm.getTimestamp()) < MAX_TIME)
-                    throw new LockServerConflictException("already locked");
+            if (flm != null) {
+                if (flm.isLocked()) {
+                    Timestamp now = new Timestamp(new Date().getTime());
+                    if (TimeStampUtil.compareTwoTimeStamps(now, flm.getTimestamp()) < MAX_TIME)
+                        throw new LockServerConflictException("already locked");
+                }
+                fileLockMap.add(flm);
             }
-            fileLockMap.add(flm);
+
         });
 
-        fileLockMap.forEach(lock -> lock.setLocked(true));
+        fileLockMap.forEach(lock -> {
+            lock.setLocked(true);
+            lock.setTimestamp(new Timestamp(System.currentTimeMillis()));
+        });
+        fileLockMapRepository.save(fileLockMap);
 
         Response response = new Response();
         response.setAcquired(true);
@@ -70,6 +76,7 @@ public class LockServiceImpl implements LockService {
         });
 
         fileLockMap.forEach(lock -> lock.setLocked(false));
+        fileLockMapRepository.save(fileLockMap);
 
         Response response = new Response();
         response.setAcquired(false);

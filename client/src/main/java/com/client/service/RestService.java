@@ -1,27 +1,24 @@
 package com.client.service;
 
 
-import com.client.dto.FileInfo;
-import com.client.dto.FileServerInfo;
-import com.client.dto.FileUploadResponse;
-import com.client.dto.LockInfo;
+import com.client.dto.*;
 import com.sun.net.httpserver.Headers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.env.Environment;
 import org.springframework.core.io.FileSystemResource;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 
 import java.io.IOException;
+import java.net.URLDecoder;
+import java.net.URLEncoder;
 import java.nio.FloatBuffer;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.List;
@@ -42,15 +39,30 @@ public class RestService {
         this.cacheService = cacheService;
     }
 
-    public FileServerInfo getFileServer(String fileName, String nameServerInfo) {
-        FileServerInfo fileServerInfo = restTemplate.getForObject(nameServerInfo, FileServerInfo.class);
+    public FileServerInfo getFileServer(String fileName, String nameServerInfo) throws Exception{
+        String url = nameServerInfo + "server-info?filename=" + URLEncoder.encode(fileName, StandardCharsets.UTF_8.toString());;
+        FileServerInfo fileServerInfo = restTemplate.getForObject(url, FileServerInfo.class);
         log.info(fileServerInfo.toString());
         return fileServerInfo;
     }
 
     public LockInfo getLock(String fileName, String lockserverInfo) {
-        LockInfo lockInfo = restTemplate.getForObject(lockserverInfo, LockInfo.class);
-        log.info(lockInfo.toString());
+        FileIdRequest fileIdRequest = new FileIdRequest();
+        fileIdRequest.getFileIds().add(fileName);
+        ResponseEntity<LockInfo> lockInfoResponseEntity= restTemplate.postForEntity(lockserverInfo + "create-lock", fileIdRequest, LockInfo.class);
+        if (lockInfoResponseEntity.getStatusCode() == HttpStatus.CONFLICT) {
+            return null;
+        }
+        LockInfo lockInfo = lockInfoResponseEntity.getBody();
+        log.info("lock acquired for file " + fileName);
+        return lockInfo;
+    }
+
+    public LockInfo deleteLock(String fileName, String lockserverInfo) {
+        FileIdRequest fileIdRequest = new FileIdRequest();
+        fileIdRequest.getFileIds().add(fileName);
+        LockInfo lockInfo = restTemplate.postForObject(lockserverInfo + "delete-lock", fileIdRequest, LockInfo.class);
+        log.info("lock removed for file " + fileName);
         return lockInfo;
     }
 
@@ -61,23 +73,29 @@ public class RestService {
 
         HttpHeaders headers = new HttpHeaders();
         headers.set("Content-Type", "multipart/form-data");
-        headers.set("Accept", "text/plain");
 
-        FileUploadResponse result = restTemplate.postForObject(
-                fileServerInfo,
-                new HttpEntity<MultiValueMap<String, Object>>(parameters, headers),
-                FileUploadResponse.class);
-        log.info(result.toString());
+        FileUploadResponse result = null;
+
+        try {
+            result = restTemplate.postForObject(
+                    fileServerInfo,
+                    new HttpEntity<MultiValueMap<String, Object>>(parameters, headers),
+                    FileUploadResponse.class);
+            log.info(result.getMessage());
+        } catch (Exception e) {
+            log.error(e.getMessage());
+        }
+
         return result;
     }
 
     public FileInfo getFile(String fileName, String fileServerInfo) throws IOException{
-        String url = fileServerInfo + fileName;
+        String url = fileServerInfo + "files/" + fileName;
         ResponseEntity<byte[]> responseEntity = restTemplate.getForEntity(url, byte[].class);
 
         byte[] fileBytes = responseEntity.getBody();
 
-        cacheService.writeFile(fileName, fileBytes);
+        cacheService.writeFile(fileName, fileBytes, "w");
 
         List<String> lastModified = responseEntity.getHeaders().get("Last-Modified");
         FileInfo fileInfo = new FileInfo();
@@ -87,8 +105,4 @@ public class RestService {
         return fileInfo;
     }
 
-    public String getFileHash(String fileName, String fileServerInfo) {
-        String url = fileServerInfo + fileName;
-        ResponseEntity<String> stringResponseEntity = restTemplate.getForEntity()
-    }
 }
