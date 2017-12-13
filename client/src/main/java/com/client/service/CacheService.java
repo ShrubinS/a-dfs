@@ -14,6 +14,7 @@ import java.io.InputStream;
 import java.math.BigInteger;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.security.MessageDigest;
 
 @Service
@@ -33,14 +34,17 @@ public class CacheService {
         String filePath = LOCAL_DIR + filename;
         File file = new File(filePath);
         if (!file.isFile()) {
-            throw new Exception("file wasn't found");
+            /*
+                Cache is empty
+             */
+            return null;
         }
 
         byte[] uploadBytes = Files.readAllBytes(Paths.get(filePath));
         MessageDigest md5 = MessageDigest.getInstance("MD5");
         byte[] digest = md5.digest(uploadBytes);
         String clientHash = new BigInteger(1, digest).toString(16);
-        Long cliendModified = file.lastModified();
+        Long clientModified = file.lastModified();
 
         ResponseEntity<String> responseEntity = restTemplate.getForEntity(serverInfo, String.class);
         String serverHash = responseEntity.getHeaders().get("File-Hash").get(0);
@@ -53,14 +57,32 @@ public class CacheService {
                 Cache is out of date with server. If there are any changes made locally, and lock is still valid,
                 commit changes.
 
-                This will not happen in this implementation, as whenever file is written, it's committed to server
+                This will not happen in this implementation, as whenever file is written, it's committed to server.
              */
+            if (serverModified > clientModified) {
+                /*
+                    Other commits have happened and client is out of date. Need to get fresh value from server.
+                 */
+                return null;
+            } else {
+                return file;
+            }
         }
 
     }
 
-    public void writeFile(String filename, byte[] fileBytes) throws IOException{
-        Files.write(Paths.get(LOCAL_DIR + filename), fileBytes);
+    public void writeFile(String filename, byte[] fileBytes, String mode) throws IOException{
+        switch (mode) {
+            case "w":
+                Files.write(Paths.get(LOCAL_DIR + filename), fileBytes, StandardOpenOption.CREATE);
+                break;
+            case "a":
+                Files.write(Paths.get(LOCAL_DIR + filename), fileBytes, StandardOpenOption.APPEND);
+                break;
+            default:
+                throw new UnsupportedOperationException("only a and w allowed");
+        }
     }
+
 
 }

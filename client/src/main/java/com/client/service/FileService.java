@@ -2,6 +2,8 @@ package com.client.service;
 
 import com.client.dto.FileInfo;
 import com.client.dto.FileServerInfo;
+import com.client.dto.FileUploadResponse;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
@@ -9,6 +11,10 @@ import org.springframework.web.client.RestTemplate;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.rmi.ServerError;
+import java.rmi.UnexpectedException;
+import java.util.logging.Logger;
 
 @Service
 public class FileService {
@@ -20,42 +26,61 @@ public class FileService {
     private final String NAMESERVER;
     private final String LOCKSERVER;
 
+    private static final org.slf4j.Logger log = LoggerFactory.getLogger(FileService.class);
+
     @Autowired
     public FileService(RestService restService, CacheService cacheService, Environment environment) {
         this.restService = restService;
         this.cacheService = cacheService;
         this.environment = environment;
 
-        this.NAMESERVER = environment.getProperty("nameserver.address") + ":" + environment.getProperty("nameserver.port");
-        this.LOCKSERVER = environment.getProperty("lockserver.address") + ":" + environment.getProperty("lockserver.port");
+        this.NAMESERVER = this.environment.getProperty("nameserver.address") + ":" + environment.getProperty("nameserver.port");
+        this.LOCKSERVER = this.environment.getProperty("lockserver.address") + ":" + environment.getProperty("lockserver.port");
     }
 
-    public void readFile(String fileName) {
+    public File readFile(String fileName) throws Exception{
         FileServerInfo serverInfo = restService.getFileServer(fileName, NAMESERVER);
-
         if (serverInfo == null) {
-            throw new NullPointerException("file server not found");
+            throw new Exception("file server not found");
         }
+        File file = cacheService.getFile(fileName, serverInfo.getFileSystemServerInfo());
 
-        File file = cacheService.
-
-        try {
+        /*
+            Cache miss
+        */
+        if (file == null) {
             FileInfo fileInfo = restService.getFile(serverInfo.getFilePath(), serverInfo.getFileSystemServerInfo());
-        } catch (IOException e) {
-            e.printStackTrace();
+            log.info(fileInfo.getLocalFileName());
+
+            /*
+                File should now be present in cache
+            */
+            file = cacheService.getFile(fileName, serverInfo.getFileSystemServerInfo());
+
+            if (file == null) {
+                throw new Exception("error in caching");
+            }
         }
+        return file;
     }
 
-    public void writeFile(String fileName, String toWrite) {
-
+    public void writeFile(String fileName, String toWrite, String mode) throws Exception{
+        cacheService.writeFile(fileName, toWrite.getBytes(), mode);
+        FileServerInfo fileServerInfo = restService.getFileServer(fileName, NAMESERVER);
+        if (fileServerInfo == null) {
+            throw new Exception("file server not found");
+        }
+        FileUploadResponse fileUploadResponse = restService.postFile(fileName, fileServerInfo.getFileSystemServerInfo());
+        log.info(fileUploadResponse.getMessage());
     }
 
-    public void appendToFile(String fileName, String toWrite) {
-
+    public void appendToFile(String fileName, String toWrite) throws Exception{
+        this.readFile(fileName);
+        this.writeFile(fileName, toWrite, "a");
     }
 
     public void listFiles(String clientWD) {
-
+        
     }
 
     public String changeDir(String toDir) {

@@ -63,7 +63,7 @@ public class CommandLiner implements CommandLineRunner {
 
                 switch (op) {
                     case "r":
-                        fileService.readFile(fileName);
+                        File file = fileService.readFile(fileName);
                         break;
                     case "w":
                         String write = commands[2];
