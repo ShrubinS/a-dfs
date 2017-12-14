@@ -2,6 +2,7 @@ package com.client.cmdline;
 
 
 import com.client.service.FileService;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.core.env.Environment;
@@ -16,6 +17,8 @@ import java.util.Scanner;
 
 @Component
 public class CommandLiner implements CommandLineRunner {
+
+    private static final org.slf4j.Logger log = LoggerFactory.getLogger(CommandLiner.class);
 
     private final Environment environment;
     private final FileService fileService;
@@ -47,7 +50,7 @@ public class CommandLiner implements CommandLineRunner {
             throw new UnsupportedOperationException("file argument or operation argument is missing");
         }
 
-        System.out.println("Enter operation. List of available operations are... ");
+        System.out.println("Enter operation. For list of available operations type --help");
         /*
             TODO: add file writing
          */
@@ -61,37 +64,48 @@ public class CommandLiner implements CommandLineRunner {
             System.out.print("\n@" + workingDir + " ");
             while (!(command = in.nextLine()).equals("exit")) {
                 String[] commands =  command.trim().split(" ");
-                String op = commands[0];
-                String fileName = commands[1];
+                String op = "";
+                String fileName = null;
                 String inputText = "";
                 try {
-                     inputText = command.substring(command.indexOf("\"") + 1, command.lastIndexOf("\""));
+                    op = commands[0];
+                    fileName = commands[1];
+                    inputText = command.substring(command.indexOf("\"") + 1, command.lastIndexOf("\""));
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    log.debug(e.getMessage());
+                }
+                String filePath;
+                if (fileName != null && !fileName.startsWith("/")) {
+                    filePath = workingDir + fileName;
+                } else {
+                    filePath = fileName;
                 }
 
-                String filePath = workingDir + fileName;
-
-                switch (op) {
-                    case "r":
-                        File file = fileService.readFile(filePath);
-                        byte[] text = Files.readAllBytes(Paths.get(file.getAbsolutePath()));
-                        System.out.write(text);
-                        break;
-                    case "w":
-                        String write = inputText;
-                        fileService.writeFile(filePath, write, "w");
-                        break;
-                    case "a":
-                        String append = inputText;
-                        fileService.appendToFile(filePath, append);
-                        break;
-                    case "ls":
-                        fileService.listFiles(workingDir);
-                        break;
-                    case "cd":
-                        workingDir = fileService.changeDir(fileName);
-                        break;
+                try {
+                    switch (op) {
+                        case "r":
+                            fileService.readFile(filePath);
+                            break;
+                        case "w":
+                            String write = inputText;
+                            fileService.writeFile(filePath, write, "w");
+                            break;
+                        case "a":
+                            String append = inputText;
+                            fileService.appendToFile(filePath, append);
+                            break;
+                        case "ls":
+                            fileService.listFiles(workingDir);
+                            break;
+                        case "cd":
+                            workingDir = fileService.changeDir(workingDir, fileName);
+                            break;
+                        case "--help":
+                            byte[] text = Files.readAllBytes(Paths.get(opsFile.getAbsolutePath()));
+                            System.out.write(text);
+                    }
+                } catch (Exception e) {
+                    System.out.println(e.getMessage());
                 }
                 System.out.print("\n@" + workingDir + " ");
             }

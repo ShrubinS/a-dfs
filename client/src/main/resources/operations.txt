@@ -1,7 +1,6 @@
 Available operations:
-    r       : read file. If file does not exist, throw error
+    r       : read file.
     w       : overwrite file if exists, or create new file
-    a       : modify existing file, file must already exist
-    ls      : show files currently in directory
+    a       : append to existing file, file must already exist
     cd      : move into directory, must provide absolute path
-    help    : show list of available operations
+    --help  : show list of available operations

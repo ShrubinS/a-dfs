@@ -1,7 +1,9 @@
 package com.client.service;
 
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -18,9 +20,12 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 
 @Service
 public class CacheService {
+
+    private static final org.slf4j.Logger log = LoggerFactory.getLogger(CacheService.class);
 
     private final RestTemplate restTemplate;
 
@@ -32,13 +37,14 @@ public class CacheService {
         this.restTemplate = restTemplate;
     }
 
-    public File getFile(String filename, String serverInfo) throws Exception{
+    public File getFile(String filename, String serverInfo) throws IOException, NoSuchAlgorithmException, FileNotFoundException{
         String filePath = LOCAL_DIR + filename;
         File file = new File(filePath);
         if (!file.isFile()) {
             /*
                 Cache is empty
              */
+            log.info("cache empty, will retrieve from server");
             return null;
         }
 
@@ -50,6 +56,9 @@ public class CacheService {
 
         String url = serverInfo + "files-hash?filename=" + URLEncoder.encode(filename, StandardCharsets.UTF_8.toString());
         ResponseEntity<String> responseEntity = restTemplate.getForEntity(url, String.class);
+        if (responseEntity.getStatusCode() == HttpStatus.NOT_FOUND) {
+            throw new FileNotFoundException("File does not exist on server");
+        }
         String serverHash = responseEntity.getHeaders().get("File-Hash").get(0);
         Long serverModified = Long.parseLong(responseEntity.getHeaders().get("Modified-Last").get(0));
 
@@ -77,6 +86,9 @@ public class CacheService {
     public void writeFile(String filename, byte[] fileBytes, String mode) throws IOException{
         switch (mode) {
             case "w":
+                if (Files.exists(Paths.get(LOCAL_DIR + filename))) {
+                    Files.delete(Paths.get(LOCAL_DIR + filename));
+                }
                 Files.write(Paths.get(LOCAL_DIR + filename), fileBytes, StandardOpenOption.CREATE);
                 break;
             case "a":

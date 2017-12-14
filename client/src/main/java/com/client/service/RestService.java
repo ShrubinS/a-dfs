@@ -14,6 +14,7 @@ import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
@@ -42,7 +43,7 @@ public class RestService {
     public FileServerInfo getFileServer(String fileName, String nameServerInfo) throws Exception{
         String url = nameServerInfo + "server-info?filename=" + URLEncoder.encode(fileName, StandardCharsets.UTF_8.toString());;
         FileServerInfo fileServerInfo = restTemplate.getForObject(url, FileServerInfo.class);
-        log.info(fileServerInfo.toString());
+        log.info("fileserver acquired for" + fileServerInfo.getFilePath());
         return fileServerInfo;
     }
 
@@ -89,9 +90,12 @@ public class RestService {
         return result;
     }
 
-    public FileInfo getFile(String fileName, String fileServerInfo) throws IOException{
+    public FileInfo getFile(String fileName, String fileServerInfo) throws IOException, FileNotFoundException{
         String url = fileServerInfo + "files/" + fileName;
         ResponseEntity<byte[]> responseEntity = restTemplate.getForEntity(url, byte[].class);
+        if (responseEntity.getStatusCode() == HttpStatus.NOT_FOUND) {
+            throw new FileNotFoundException("No such file exists");
+        }
 
         byte[] fileBytes = responseEntity.getBody();
 

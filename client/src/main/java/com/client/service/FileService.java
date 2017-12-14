@@ -14,8 +14,10 @@ import org.springframework.web.client.RestTemplate;
 
 import javax.swing.plaf.InternalFrameUI;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.rmi.ServerError;
 import java.rmi.UnexpectedException;
 import java.util.concurrent.CompletableFuture;
@@ -48,30 +50,41 @@ public class FileService {
         this.LOCKSERVER = this.environment.getProperty("lockserver.address") + ":" + environment.getProperty("lockserver.port") + "/";
     }
 
-    public File readFile(String fileName) throws Exception{
+    public void readFile(String fileName) throws Exception{
         FileServerInfo serverInfo = restService.getFileServer(fileName, NAMESERVER);
         if (serverInfo == null) {
             throw new Exception("file server not found");
         }
-        File file = cacheService.getFile(serverInfo.getFilePath(), serverInfo.getFileSystemServerInfo());
+        File file;
+        try {
+            file = cacheService.getFile(serverInfo.getFilePath(), serverInfo.getFileSystemServerInfo());
+        } catch (FileNotFoundException e) {
+            System.out.println(e.getMessage());
+            return;
+        }
 
         /*
             Cache miss
         */
         if (file == null) {
-            FileInfo fileInfo = restService.getFile(serverInfo.getFilePath(), serverInfo.getFileSystemServerInfo());
-            log.info(fileInfo.getLocalFileName());
+            try {
+                FileInfo fileInfo = restService.getFile(serverInfo.getFilePath(), serverInfo.getFileSystemServerInfo());
+                log.info(fileInfo.getLocalFileName());
+            } catch (FileNotFoundException e) {
+                System.out.println(e.getMessage());
+                return;
+            }
 
             /*
                 File should now be present in cache
             */
             file = cacheService.getFile(serverInfo.getFilePath(), serverInfo.getFileSystemServerInfo());
-
             if (file == null) {
                 throw new Exception("error in caching");
             }
         }
-        return file;
+        byte[] text = Files.readAllBytes(Paths.get(file.getAbsolutePath()));
+        System.out.write(text);
     }
 
     public void writeFile(String fileName, String toWrite, String mode) throws Exception{
@@ -95,8 +108,25 @@ public class FileService {
 
     }
 
-    public String changeDir(String toDir) {
-        return toDir;
+    public String changeDir(String currentDir, String toDir) {
+        String changedDir;
+        String addSlash = "";
+        if (!toDir.endsWith("/")) {
+            addSlash = "/";
+        }
+
+        if (toDir.startsWith("/")) {
+            /*
+                Absolute path
+            */
+            changedDir = toDir + addSlash;
+        } else {
+            /*
+                Relative path
+             */
+            changedDir = currentDir + toDir + addSlash;
+        }
+        return changedDir;
     }
 
     private void writeFileAsync(String fileName, String fileServerInfo) {
@@ -119,6 +149,6 @@ public class FileService {
                     restService.deleteLock(fileName, LOCKSERVER);
                     log.info("write operation completed for file " + fileName);
                 })
-                .handle((result, ex) -> "Error handling: " + ex.getMessage());
+                .handle((result, ex) -> "Error: " + ex.getMessage());
     }
 }
