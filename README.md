@@ -52,7 +52,7 @@ Setup guide:
 Functionalities:
 1. All file modification requests from ```client``` will first require a lock from the ```lockserver```. List of active locks, with timestamps of when the locks are aquired, is stored in a mysql database managed by the lockserver.
 2. New files will be registered with the lockserver when it has been written to the server. If a file is not found in the ```lock_db```, it is assumed that this is a new file and no lock will be used to write this file.
-3. Additional logic is used by lockserver for determining if the lock is to be given. If another client requested a lock and ```config.maxtime``` minutes have passed, the lock may be granted to this process. To keep track of this, the timestamp of lock acquisition is stored with the file.
+3. Additional logic is used by lockserver for determining if the lock is to be given. If another client requested a lock and ```config.maxtime``` minutes have passed, the lock may be granted to this process. To keep track of this, the timestamp of lock acquisition is stored with the file on the database.
 4. Internal synchronization of the lock access is managed by the database.
 
 Setup guide:
