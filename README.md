@@ -1,6 +1,6 @@
 # a-dfs
 
-All communication between servers happen using HTTP APIs
+All communication between servers happen using HTTP APIs. The servers are built using Spring boot and runs on an embedded tomcat server (configurable using ```application.properties```). Data access is managed using Spring Data JPA on MySQL servers. 
 
 ### Prerequisites for build
 1. Java 8

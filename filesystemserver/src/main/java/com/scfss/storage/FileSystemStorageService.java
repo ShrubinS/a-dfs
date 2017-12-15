@@ -16,6 +16,12 @@ import org.springframework.util.FileSystemUtils;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
+
+/*
+    @Comment: Srubin Sethu Madhavan
+    This Storage code is part of code provided by Spring guides explaining "Learn how to build a Spring application that accepts multi-part file uploads"
+    Original link: https://github.com/spring-guides/gs-uploading-files
+ */
 @Service
 public class FileSystemStorageService implements StorageService {
 
